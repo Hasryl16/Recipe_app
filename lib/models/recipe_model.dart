@@ -35,6 +35,22 @@ class RecipeModel {
       return null;
     }
 
+    DateTime? _parseDate(dynamic value) {
+      if (value == null) return null;
+      try {
+        if (value is String) {
+          // Handle common non-ISO formats like "2026-03-25 20:42:03"
+          if (value.contains(' ') && !value.contains('T')) {
+            value = value.replaceAll(' ', 'T');
+          }
+          return DateTime.parse(value);
+        }
+        return null;
+      } catch (e) {
+        return null;
+      }
+    }
+
     return RecipeModel(
       id: _toInt(json['id']),
       authorId: _toInt(json['author_id']) ?? 0,
@@ -45,9 +61,16 @@ class RecipeModel {
       difficulty: json['difficulty'],
       kcal: _toInt(json['kcal']),
       imageUrl: json['image_url'],
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      createdAt: _parseDate(json['created_at']),
       ingredients: (json['ingredients'] as List?)
-          ?.map((i) => IngredientAmount.fromJson(i))
+          ?.map((i) {
+            try {
+              return IngredientAmount.fromJson(i as Map<String, dynamic>);
+            } catch (e) {
+              return null;
+            }
+          })
+          .whereType<IngredientAmount>()
           .toList(),
       steps: (json['steps'] as List?)?.map((s) => s.toString()).toList(),
     );
@@ -79,8 +102,8 @@ class IngredientAmount {
 
   factory IngredientAmount.fromJson(Map<String, dynamic> json) {
     return IngredientAmount(
-      name: json['name'],
-      amount: json['amount'],
+      name: json['name']?.toString() ?? '',
+      amount: json['amount']?.toString() ?? '',
     );
   }
 

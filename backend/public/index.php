@@ -1,7 +1,7 @@
 <?php
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
+header("Access-Control-Allow-Methods: POST, GET, DELETE, PUT, OPTIONS");
 header("Access-Control-Max-Age: 3600");
 header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 
@@ -15,6 +15,7 @@ require_once __DIR__ . '/../config/Database.php';
 require_once __DIR__ . '/../controllers/AuthController.php';
 require_once __DIR__ . '/../controllers/RecipeController.php';
 require_once __DIR__ . '/../controllers/MealPlanController.php';
+require_once __DIR__ . '/../models/Bookmark.php';
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 
 // Load Env
@@ -27,6 +28,7 @@ $db = $database->getConnection();
 $authController = new AuthController($db);
 $recipeController = new RecipeController($db);
 $mealPlanController = new MealPlanController($db);
+$bookmarkModel = new Bookmark($db);
 
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $uri = explode('/', $uri);
@@ -56,12 +58,58 @@ switch ($endpoint) {
     case 'fridge':
         echo json_encode($recipeController->searchByIngredients($input));
         break;
+    case 'search':
+        $keyword = $_GET['q'] ?? '';
+        echo json_encode($recipeController->search($keyword));
+        break;
     case 'meal-plan':
         $userId = $_GET['user_id'] ?? 0;
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode($mealPlanController->create($input));
-        } else {
+        }
+        else if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+            $id = $_GET['id'] ?? 0;
+            echo json_encode($mealPlanController->delete($id));
+        }
+        else {
             echo json_encode($mealPlanController->getByUser($userId));
+        }
+        break;
+    case 'recipes':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            echo json_encode($recipeController->create($input));
+        } else {
+            $authorId = $_GET['author_id'] ?? 0;
+            echo json_encode($recipeController->getByAuthor($authorId));
+        }
+        break;
+    case 'profile-stats':
+        $decoded = AuthMiddleware::authenticate();
+        $user = new User($db);
+        echo json_encode($user->getStats($decoded->uid));
+        break;
+    case 'profile-update':
+        $decoded = AuthMiddleware::authenticate();
+        $user = new User($db);
+        $user->id = $decoded->uid;
+        $user->username = $input['username'] ?? $decoded->username;
+        $user->bio = $input['bio'] ?? null;
+        $user->profile_picture = $input['profile_picture'] ?? null;
+        if ($user->update()) {
+            echo json_encode(["status" => "success", "message" => "Profile updated"]);
+        } else {
+            echo json_encode(["status" => "error", "message" => "Update failed"]);
+        }
+        break;
+    case 'bookmarks':
+        $decoded = AuthMiddleware::authenticate();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $recipeId = $input['recipe_id'] ?? 0;
+            echo json_encode($bookmarkModel->toggle($decoded->uid, $recipeId));
+        } else {
+            // Using Recipe model for enriched details
+            $recipeModel = new Recipe($db);
+            echo json_encode($recipeModel->getSavedByUser($decoded->uid));
         }
         break;
     case 'profile':

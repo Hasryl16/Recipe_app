@@ -41,39 +41,27 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Color(0xFF53D22D))),
-      );
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF53D22D)));
     }
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFF152012)
-          : const Color(0xFFF6F8F6),
-      body: Stack(
-        children: [
-          SafeArea(
-            child: RefreshIndicator(
-              onRefresh: _loadData,
-              color: const Color(0xFF53D22D),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: 100),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(),
-                    _buildSearchBar(context),
-                    _buildCategories(),
-                    if (_featuredRecipe != null) _buildFeaturedRecipe(context, _featuredRecipe!),
-                    _buildTrendingSection(context, _trendingRecipes),
-                  ],
-                ),
-              ),
-            ),
+    return SafeArea(
+      child: RefreshIndicator(
+        onRefresh: _loadData,
+        color: const Color(0xFF53D22D),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(bottom: 120),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              _buildSearchBar(context),
+              _buildCategories(),
+              if (_featuredRecipe != null) _buildFeaturedRecipe(context, _featuredRecipe!),
+              _buildTrendingSection(context, _trendingRecipes),
+            ],
           ),
-          _buildBottomNav(context),
-        ],
+        ),
       ),
     );
   }
@@ -84,10 +72,10 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'Selamat Pagi',
                 style: TextStyle(
                   color: Color(0xFF53D22D),
@@ -99,8 +87,9 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 'Halo, mau masak apa hari ini?',
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 22,
                   fontWeight: FontWeight.w800,
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
                 ),
               ),
             ],
@@ -136,23 +125,26 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         height: 56,
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF53D22D).withOpacity(0.1) : Colors.grey[200]!.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(12),
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[200]!.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(28),
+          border: isDark ? Border.all(color: Colors.white.withOpacity(0.1)) : null,
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: const Row(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Row(
           children: [
-            Icon(Icons.search, color: Color(0xFF53D22D)),
-            SizedBox(width: 12),
+            const Icon(Icons.search, color: Color(0xFF53D22D), size: 22),
+            const SizedBox(width: 12),
             Expanded(
               child: TextField(
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
                 decoration: InputDecoration(
                   hintText: 'Cari resep, bahan, atau menu...',
+                  hintStyle: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[600]),
                   border: InputBorder.none,
                 ),
               ),
             ),
-            Icon(Icons.tune, color: Color(0xFF53D22D)),
+            Icon(Icons.tune, color: const Color(0xFF53D22D).withOpacity(0.8), size: 20),
           ],
         ),
       ),
@@ -178,21 +170,21 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildCategoryChip(String label, IconData icon, {bool isSelected = false}) {
     return Container(
       margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFF53D22D) : Colors.grey[200]!.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(24),
+        color: isSelected ? const Color(0xFF53D22D) : Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(30),
       ),
       child: Row(
         children: [
-          if (!isSelected) Icon(icon, size: 18, color: Colors.grey[700]),
+          if (!isSelected) Icon(icon, size: 18, color: const Color(0xFF53D22D).withOpacity(0.7)),
           if (!isSelected) const SizedBox(width: 8),
           Text(
             label,
             style: TextStyle(
               fontSize: 14,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-              color: isSelected ? const Color(0xFF152012) : Colors.grey[700],
+              color: isSelected ? const Color(0xFF152012) : Colors.white70,
             ),
           ),
         ],
@@ -390,72 +382,4 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-  Widget _buildBottomNav(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Positioned(
-      bottom: 20,
-      left: 24,
-      right: 24,
-      child: Container(
-        height: 70,
-        decoration: BoxDecoration(
-          color: isDark ? Colors.black.withOpacity(0.8) : Colors.white.withOpacity(0.9),
-          borderRadius: BorderRadius.circular(35),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNavItem(Icons.home, 'Beranda', isSelected: true, onTap: () {}),
-            _buildNavItem(Icons.search, 'Cari', onTap: () => context.push('/search')),
-            Transform.translate(
-              offset: const Offset(0, -10),
-              child: FloatingActionButton(
-                onPressed: () => context.push('/add_recipe'),
-                backgroundColor: const Color(0xFF53D22D),
-                elevation: 4,
-                shape: const CircleBorder(),
-                child: const Icon(Icons.add, color: Color(0xFF152012), size: 32),
-              ),
-            ),
-            _buildNavItem(Icons.calendar_today, 'Rencana', onTap: () => context.push('/meal_plan')),
-            _buildNavItem(Icons.person, 'Profil', onTap: () => context.push('/profile')),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, {bool isSelected = false, VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? const Color(0xFF53D22D) : Colors.grey,
-            size: 24,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected ? const Color(0xFF53D22D) : Colors.grey,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
-

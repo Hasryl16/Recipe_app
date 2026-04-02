@@ -15,36 +15,94 @@ class RecipeDetailScreen extends StatefulWidget {
 class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   RecipeModel? _detailedRecipe;
   bool _isLoading = false;
+  bool _isBookmarked = false;
+  bool _isTogglingBookmark = false;
+  final Set<String> _selectedIngredients = {};
 
   @override
   void initState() {
     super.initState();
     _detailedRecipe = widget.recipe;
     _fetchDetailsIfNeeded();
+    _checkBookmarkStatus();
   }
 
   Future<void> _fetchDetailsIfNeeded() async {
     final r = _detailedRecipe;
     if (r == null || r.id == null) return;
 
-    // If ingredients or steps are missing, fetch the full recipe
     if (r.ingredients == null || r.ingredients!.isEmpty || r.steps == null || r.steps!.isEmpty) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
 
       try {
         final fullRecipe = await locator.recipeService.getRecipeById(r.id!);
-        setState(() {
-          _detailedRecipe = fullRecipe;
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _detailedRecipe = fullRecipe;
+            _isLoading = false;
+          });
+        }
       } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
-        // Silence error for now or show snackbar
+        if (mounted) setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _checkBookmarkStatus() async {
+    final r = _detailedRecipe;
+    if (r == null || r.id == null) return;
+
+    final auth = locator.authService;
+    if (auth.token == null) return;
+
+    try {
+      // We can fetch saved recipes and check if this one is in the list
+      final savedRecipes = await locator.recipeService.getSavedRecipes(auth.token!);
+      if (mounted) {
+        setState(() {
+          _isBookmarked = savedRecipes.any((sr) => sr.id == r.id);
+        });
+      }
+    } catch (e) {
+      // Silent error
+    }
+  }
+
+  Future<void> _toggleBookmark() async {
+    final r = _detailedRecipe;
+    if (r == null || r.id == null) return;
+
+    final auth = locator.authService;
+    if (auth.token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to save recipes')),
+      );
+      return;
+    }
+
+    setState(() => _isTogglingBookmark = true);
+
+    try {
+      final success = await locator.recipeService.toggleBookmark(auth.token!, r.id!);
+      if (mounted) {
+        if (success) {
+          setState(() {
+            _isBookmarked = !_isBookmarked;
+            _isTogglingBookmark = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_isBookmarked ? 'Recipe saved to profile' : 'Recipe removed from profile'),
+              backgroundColor: const Color(0xFF53D22D),
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        } else {
+          setState(() => _isTogglingBookmark = false);
+        }
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isTogglingBookmark = false);
     }
   }
 
@@ -82,14 +140,14 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         const SizedBox(height: 32),
                         _buildCookingSteps(isDark, recipe),
                       ],
-                      const SizedBox(height: 100), // Space for FAB
+                      const SizedBox(height: 100),
                     ],
                   ),
                 ),
               ),
             ],
           ),
-          _buildFloatingActionButton(),
+          _buildFloatingActionButton(recipe),
         ],
       ),
     );
@@ -97,15 +155,25 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
 
   Widget _buildAppBar(BuildContext context, bool isDark, RecipeModel? recipe) {
     return SliverAppBar(
-      expandedHeight: 350,
+      expandedHeight: 300,
       pinned: true,
+      centerTitle: true,
       backgroundColor: isDark ? const Color(0xFF152012) : const Color(0xFFF6F8F6),
+      elevation: 0,
+      title: Text(
+        'Recipe Details',
+        style: TextStyle(
+          color: isDark ? Colors.white : Colors.black,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
       leading: Padding(
         padding: const EdgeInsets.all(8.0),
         child: CircleAvatar(
-          backgroundColor: Colors.white.withOpacity(0.2),
+          backgroundColor: Colors.white.withOpacity(0.05),
           child: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black, size: 20),
             onPressed: () => context.pop(),
           ),
         ),
@@ -114,28 +182,47 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: CircleAvatar(
-            backgroundColor: Colors.white.withOpacity(0.2),
+            backgroundColor: Colors.white.withOpacity(0.05),
             child: IconButton(
-              icon: const Icon(Icons.share, color: Colors.white),
+              icon: Icon(Icons.share, color: isDark ? Colors.white : Colors.black, size: 20),
               onPressed: () {},
             ),
           ),
         ),
       ],
       flexibleSpace: FlexibleSpaceBar(
-        background: recipe?.imageUrl != null
-            ? Image.network(
-                recipe!.imageUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  color: Colors.grey[300],
-                  child: const Center(child: Icon(Icons.restaurant, color: Colors.grey, size: 50)),
-                ),
-              )
-            : Container(
-                color: Colors.grey[300],
-                child: const Center(child: Icon(Icons.restaurant, color: Colors.grey, size: 50)),
-              ),
+        background: Center(
+          child: Container(
+            width: 220,
+            height: 220,
+            margin: const EdgeInsets.only(top: 60),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF53D22D).withOpacity(0.2),
+                  blurRadius: 30,
+                  spreadRadius: 5,
+                )
+              ],
+            ),
+            child: ClipOval(
+              child: recipe?.imageUrl != null
+                  ? Image.network(
+                      recipe!.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: Colors.grey[800],
+                        child: const Icon(Icons.restaurant, color: Colors.grey, size: 50),
+                      ),
+                    )
+                  : Container(
+                      color: Colors.grey[800],
+                      child: const Icon(Icons.restaurant, color: Colors.grey, size: 50),
+                    ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -153,7 +240,19 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                 style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800),
               ),
             ),
-            const Icon(Icons.bookmark_add_outlined, color: Color(0xFF53D22D), size: 32),
+            _isTogglingBookmark 
+              ? const Padding(
+                  padding: EdgeInsets.only(right: 8.0),
+                  child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF53D22D))),
+                )
+              : IconButton(
+                  icon: Icon(
+                    _isBookmarked ? Icons.bookmark : Icons.bookmark_add_outlined,
+                    color: const Color(0xFF53D22D),
+                    size: 32,
+                  ),
+                  onPressed: _toggleBookmark,
+                ),
           ],
         ),
         const SizedBox(height: 12),
@@ -216,35 +315,68 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         if (ingredients.isEmpty && !_isLoading)
           const Text('No ingredients listed.', style: TextStyle(color: Colors.grey))
         else
-          ...ingredients.map((i) => _buildIngredientItem(i.name, i.amount)),
+          ...ingredients.map((i) => _buildIngredientItem(
+                i.name,
+                i.amount,
+                isChecked: _selectedIngredients.contains(i.name),
+                onTap: () {
+                  setState(() {
+                    if (_selectedIngredients.contains(i.name)) {
+                      _selectedIngredients.remove(i.name);
+                    } else {
+                      _selectedIngredients.add(i.name);
+                    }
+                  });
+                },
+              )),
       ],
     );
   }
 
-  Widget _buildIngredientItem(String name, String amount, {bool isChecked = false}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: const Color(0xFF53D22D), width: 2),
-              color: isChecked ? const Color(0xFF53D22D) : Colors.transparent,
+  Widget _buildIngredientItem(String name, String amount, {bool isChecked = false, VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isChecked ? const Color(0xFF53D22D).withOpacity(0.05) : Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(24),
+          border: isChecked ? Border.all(color: const Color(0xFF53D22D).withOpacity(0.3), width: 1) : null,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF53D22D), width: 2),
+                color: isChecked ? const Color(0xFF53D22D) : Colors.transparent,
+              ),
+              child: isChecked ? const Icon(Icons.check, size: 16, color: Colors.black) : null,
             ),
-            child: isChecked ? const Icon(Icons.check, size: 16, color: Colors.black) : null,
-          ),
-          const SizedBox(width: 16),
-          Expanded(child: Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
-          Text(amount, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                name,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  decoration: isChecked ? TextDecoration.lineThrough : null,
+                  color: isChecked ? Colors.grey : (isChecked ? Colors.grey : Colors.white70),
+                ),
+              ),
+            ),
+            Text(
+              amount,
+              style: TextStyle(
+                fontSize: 14,
+                color: isChecked ? Colors.grey.withOpacity(0.5) : Colors.grey,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -332,18 +464,22 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  Widget _buildFloatingActionButton() {
+  Widget _buildFloatingActionButton(RecipeModel? recipe) {
     return Positioned(
       bottom: 32,
       left: 24,
       right: 24,
       child: ElevatedButton(
-        onPressed: () {},
+        onPressed: () {
+          if (recipe != null) {
+            context.push('/cooking_mode', extra: recipe);
+          }
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF53D22D),
           foregroundColor: const Color(0xFF152012),
           padding: const EdgeInsets.symmetric(vertical: 20),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
           elevation: 12,
           shadowColor: const Color(0xFF53D22D).withOpacity(0.4),
         ),
@@ -359,4 +495,3 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 }
-

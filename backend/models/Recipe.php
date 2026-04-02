@@ -83,5 +83,98 @@ class Recipe {
         $recipes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return $this->attachDetails($recipes);
     }
+
+    public function getByAuthorId($authorId) {
+        $query = "SELECT * FROM " . $this->table_name . " WHERE author_id = ? ORDER BY created_at DESC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$authorId]);
+        $recipes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $this->attachDetails($recipes);
+    }
+
+    public function search($keyword) {
+        if (empty(trim($keyword))) return [];
+        $searchTerm = "%{$keyword}%";
+        $query = "SELECT * FROM " . $this->table_name . " WHERE title LIKE ? OR description LIKE ? OR category LIKE ? ORDER BY created_at DESC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$searchTerm, $searchTerm, $searchTerm]);
+        $recipes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $this->attachDetails($recipes);
+    }
+
+    public function getSavedByUser($userId) {
+        $query = "SELECT r.* FROM recipes r
+                  JOIN bookmarks b ON r.id = b.recipe_id
+                  WHERE b.user_id = ?
+                  ORDER BY b.created_at DESC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$userId]);
+        $recipes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $this->attachDetails($recipes);
+    }
+
+    public function create($data) {
+        file_put_contents(__DIR__ . '/../../debug.log', "CREATE ATTEMPT: " . json_encode($data) . "\n", FILE_APPEND);
+        try {
+            $this->conn->beginTransaction();
+
+            // 1. Insert into recipes
+            $query = "INSERT INTO " . $this->table_name . " 
+                      (author_id, title, description, category, prep_time, difficulty, kcal, image_url) 
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([
+                $data['author_id'] ?? 1,
+                $data['title'],
+                $data['description'] ?? '',
+                $data['category'] ?? '',
+                $data['prep_time'] ?? 0,
+                $data['difficulty'] ?? '',
+                $data['kcal'] ?? 0,
+                $data['image_url'] ?? ''
+            ]);
+            $recipeId = $this->conn->lastInsertId();
+            file_put_contents(__DIR__ . '/../../debug.log', "RECIPE INSERTED: ID=$recipeId\n", FILE_APPEND);
+
+            // 2. Handle Ingredients
+            if (!empty($data['ingredients'])) {
+                foreach ($data['ingredients'] as $ing) {
+                    // Check if ingredient exists
+                    $stmt = $this->conn->prepare("SELECT id FROM ingredients WHERE name = ?");
+                    $stmt->execute([$ing['name']]);
+                    $ingredientId = $stmt->fetchColumn();
+
+                    if (!$ingredientId) {
+                        $stmt = $this->conn->prepare("INSERT INTO ingredients (name) VALUES (?)");
+                        $stmt->execute([$ing['name']]);
+                        $ingredientId = $this->conn->lastInsertId();
+                    }
+
+                    // Link to recipe
+                    $stmt = $this->conn->prepare("INSERT INTO recipe_ingredients (recipe_id, ingredient_id, amount) VALUES (?, ?, ?)");
+                    $stmt->execute([$recipeId, $ingredientId, $ing['amount'] ?? '']);
+                }
+            }
+
+            // 3. Handle Steps
+            if (!empty($data['steps'])) {
+                $stepNumber = 1;
+                foreach ($data['steps'] as $step) {
+                    $stmt = $this->conn->prepare("INSERT INTO cooking_steps (recipe_id, step_number, description) VALUES (?, ?, ?)");
+                    $stmt->execute([$recipeId, $stepNumber++, $step]);
+                }
+            }
+
+            $this->conn->commit();
+            file_put_contents(__DIR__ . '/../../debug.log', "CREATE SUCCESS: ID=$recipeId\n", FILE_APPEND);
+            return ["status" => "success", "id" => $recipeId];
+        } catch (Exception $e) {
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
+            file_put_contents(__DIR__ . '/../../debug.log', "CREATE ERROR: " . $e->getMessage() . "\n", FILE_APPEND);
+            return ["status" => "error", "message" => $e->getMessage()];
+        }
+    }
 }
 ?>

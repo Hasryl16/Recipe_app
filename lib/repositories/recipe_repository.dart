@@ -8,6 +8,8 @@ abstract class RecipeRepository {
   Future<RecipeModel> getRecipeById(int id);
   Future<List<RecipeModel>> searchRecipesByIngredients(List<String> ingredients);
   Future<void> saveRecipe(RecipeModel recipe);
+  Future<List<RecipeModel>> getRecipesByAuthor(int authorId);
+  Future<List<RecipeModel>> searchRecipes(String query);
 }
 
 class RemoteRecipeRepository implements RecipeRepository {
@@ -76,6 +78,45 @@ class RemoteRecipeRepository implements RecipeRepository {
 
   @override
   Future<void> saveRecipe(RecipeModel recipe) async {
-    // POST request to backend
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/recipes'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(recipe.toJson()),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to save recipe: ${response.body}');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<RecipeModel>> getRecipesByAuthor(int authorId) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/recipes?author_id=$authorId'));
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        return data.map((item) => RecipeModel.fromJson(item)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  @override
+  Future<List<RecipeModel>> searchRecipes(String query) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/search?q=${Uri.encodeComponent(query)}'));
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        return data.map((item) => RecipeModel.fromJson(item)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
   }
 }

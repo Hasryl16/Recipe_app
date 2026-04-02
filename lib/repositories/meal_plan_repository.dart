@@ -29,18 +29,55 @@ class RemoteMealPlanRepository implements MealPlanRepository {
   @override
   Future<void> addMealToPlan(MealPlanModel plan) async {
     try {
-      await http.post(
+      final response = await http.post(
         Uri.parse('$baseUrl/meal-plan'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(plan.toJson()),
       );
+      
+      if (response.body.isEmpty) {
+        throw Exception('Empty response from server (Status: ${response.statusCode})');
+      }
+
+      dynamic data;
+      try {
+        data = jsonDecode(response.body);
+      } catch (e) {
+        throw Exception('Server returned invalid JSON: ${response.body.substring(0, 50)}');
+      }
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception(data is Map ? (data['message'] ?? 'Status ${response.statusCode}') : 'Status ${response.statusCode}');
+      }
+      
+      if (data is Map && data['status'] == 'error') {
+        throw Exception(data['message'] ?? 'Backend error when planning meal');
+      }
     } catch (e) {
-      // Handle error
+      rethrow;
     }
   }
 
   @override
   Future<void> removeMealFromPlan(int planId) async {
-    // Implement delete if needed
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/meal-plan?id=$planId'),
+      );
+      
+      if (response.body.isNotEmpty) {
+        final data = jsonDecode(response.body);
+        if (response.statusCode != 200) {
+          throw Exception(data['message'] ?? 'Failed to delete meal plan');
+        }
+        if (data['status'] == 'error') {
+          throw Exception(data['message'] ?? 'Backend error when deleting');
+        }
+      } else if (response.statusCode != 200) {
+        throw Exception('Failed to delete meal plan (Status: ${response.statusCode})');
+      }
+    } catch (e) {
+      rethrow;
+    }
   }
 }

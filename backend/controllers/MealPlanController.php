@@ -18,5 +18,12 @@ class MealPlanController {
         }
         return ["status" => "error", "message" => "Unable to plan meal"];
     }
+
+    public function delete($id) {
+        if ($this->mealPlan->delete($id)) {
+            return ["status" => "success", "message" => "Meal plan deleted successfully"];
+        }
+        return ["status" => "error", "message" => "Unable to delete meal plan"];
+    }
 }
 ?>

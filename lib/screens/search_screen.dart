@@ -11,6 +11,7 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
+  final TextEditingController _searchController = TextEditingController();
   final Set<String> _selectedIngredients = {'Egg', 'Tomato', 'Avocado'};
   List<RecipeModel> _recipes = [];
   bool _isLoading = true;
@@ -20,6 +21,37 @@ class _SearchScreenState extends State<SearchScreen> {
   void initState() {
     super.initState();
     _loadInitialData();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _performTextSearch(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() => _isSearching = false);
+      _loadInitialData();
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _isSearching = true;
+    });
+
+    try {
+      final results = await locator.recipeService.searchRecipes(query);
+      setState(() {
+        _recipes = results;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _loadInitialData() async {
@@ -67,29 +99,19 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFF152012)
-          : const Color(0xFFF6F8F6),
-      body: Stack(
-        children: [
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 110),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(),
-                  _buildSearchBar(context),
-                  _buildCategoriesSection(),
-                  _buildFridgeSection(context),
-                  _buildRecommendedSection(context),
-                ],
-              ),
-            ),
-          ),
-          _buildBottomNav(context),
-        ],
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 120),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(),
+            _buildSearchBar(context),
+            _buildCategoriesSection(),
+            _buildFridgeSection(context),
+            _buildRecommendedSection(context),
+          ],
+        ),
       ),
     );
   }
@@ -122,8 +144,20 @@ class _SearchScreenState extends State<SearchScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: TextField(
+        controller: _searchController,
+        textInputAction: TextInputAction.search,
+        onSubmitted: _performTextSearch,
         decoration: InputDecoration(
           prefixIcon: const Icon(Icons.search, color: Colors.grey),
+          suffixIcon: _searchController.text.isNotEmpty 
+            ? IconButton(
+                icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
+                onPressed: () {
+                  _searchController.clear();
+                  _performTextSearch('');
+                },
+              )
+            : null,
           hintText: 'Search recipes, cuisines...',
           filled: true,
           fillColor: isDark ? const Color(0xFF53D22D).withOpacity(0.05) : Colors.grey[200]!.withOpacity(0.5),
@@ -132,6 +166,9 @@ class _SearchScreenState extends State<SearchScreen> {
             borderSide: BorderSide.none,
           ),
         ),
+        onChanged: (value) {
+          setState(() {});
+        },
       ),
     );
   }
@@ -209,9 +246,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   ],
                 ),
                 TextButton(
-                  onPressed: () {
-                    // Logic to add new ingredient (could show a dialog)
-                  },
+                  onPressed: () {},
                   child: const Text('Add Item +', style: TextStyle(color: Color(0xFF53D22D), fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
               ],
@@ -278,7 +313,7 @@ class _SearchScreenState extends State<SearchScreen> {
           else if (_recipes.isEmpty)
             const Padding(
               padding: EdgeInsets.all(40.0),
-              child: Text('No recipes found with these ingredients', style: TextStyle(color: Colors.grey)),
+              child: Text('No recipes found', style: TextStyle(color: Colors.grey)),
             )
           else
             GridView.count(
@@ -344,7 +379,7 @@ class _SearchScreenState extends State<SearchScreen> {
               const Icon(Icons.schedule, size: 12, color: Colors.grey),
               const SizedBox(width: 4),
               Text(
-                '${recipe.prepTime ?? 0} min • ${recipe.difficulty ?? 'Easy'}',
+                '${recipe.prepTime ?? 0} min \u2022 ${recipe.difficulty ?? 'Easy'}',
                 style: const TextStyle(color: Colors.grey, fontSize: 11),
               ),
             ],
@@ -353,57 +388,4 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
     );
   }
-
-  Widget _buildBottomNav(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Positioned(
-      bottom: 20,
-      left: 24,
-      right: 24,
-      child: Container(
-        height: 70,
-        decoration: BoxDecoration(
-          color: isDark ? Colors.black.withOpacity(0.8) : Colors.white.withOpacity(0.9),
-          borderRadius: BorderRadius.circular(35),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10)),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNavItem(Icons.home, 'Beranda', onTap: () => context.push('/home')),
-            _buildNavItem(Icons.search, 'Cari', isSelected: true, onTap: () {}),
-            Transform.translate(
-              offset: const Offset(0, -10),
-              child: FloatingActionButton(
-                onPressed: () => context.push('/add_recipe'),
-                backgroundColor: const Color(0xFF53D22D),
-                elevation: 4,
-                shape: const CircleBorder(),
-                child: const Icon(Icons.add, color: Color(0xFF152012), size: 32),
-              ),
-            ),
-            _buildNavItem(Icons.calendar_today, 'Rencana', onTap: () => context.push('/meal_plan')),
-            _buildNavItem(Icons.person, 'Profil', onTap: () => context.push('/profile')),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, {bool isSelected = false, VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: isSelected ? const Color(0xFF53D22D) : Colors.grey, size: 24),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 10, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500, color: isSelected ? const Color(0xFF53D22D) : Colors.grey)),
-        ],
-      ),
-    );
-  }
 }
-

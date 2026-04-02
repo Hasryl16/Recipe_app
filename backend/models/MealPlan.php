@@ -33,5 +33,14 @@ class MealPlan {
         }
         return false;
     }
+
+    public function delete($id) {
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = ?";
+        $stmt = $this->conn->prepare($query);
+        if ($stmt->execute([$id])) {
+            return true;
+        }
+        return false;
+    }
 }
 ?>

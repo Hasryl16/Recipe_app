@@ -24,5 +24,17 @@ class RecipeController {
         $ingredients = $data['ingredients'] ?? [];
         return $this->recipe->getByIngredients($ingredients);
     }
+
+    public function create($data) {
+        return $this->recipe->create($data);
+    }
+
+    public function getByAuthor($id) {
+        return $this->recipe->getByAuthorId($id);
+    }
+
+    public function search($keyword) {
+        return $this->recipe->search($keyword);
+    }
 }
 ?>
