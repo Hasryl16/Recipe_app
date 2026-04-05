@@ -373,66 +373,198 @@ class _ProfileScreenState extends State<ProfileScreen> {
       itemCount: recipes.length,
       itemBuilder: (context, index) {
         final recipe = recipes[index];
-        return GestureDetector(
-          onTap: () => context.push('/recipe_detail', extra: recipe),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5)),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                      image: DecorationImage(
-                        image: NetworkImage(recipe.imageUrl ?? 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'),
-                        fit: BoxFit.cover,
+        final bool isMyRecipe = _selectedTab == 0;
+
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5)),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                        child: Image.network(
+                          recipe.imageUrl ?? 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.restaurant, color: Colors.grey),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        recipe.title,
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    Positioned.fill(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                          onTap: () => context.push('/recipe_detail', extra: recipe),
+                        ),
                       ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(Icons.schedule, size: 10, color: Colors.grey[500]),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${recipe.prepTime ?? 0} Mins',
-                            style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.bold),
+                    ),
+                    if (isMyRecipe)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: GestureDetector(
+                          onTap: () => _showRecipeOptions(recipe),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.4),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.more_vert, color: Colors.white, size: 16),
                           ),
-                          const Spacer(),
-                          Text(
-                            recipe.difficulty ?? 'Med',
-                            style: const TextStyle(fontSize: 10, color: Color(0xFF53D22D), fontWeight: FontWeight.bold),
-                          ),
-                        ],
+                        ),
                       ),
-                    ],
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      recipe.title,
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.schedule, size: 10, color: Colors.grey[500]),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${recipe.prepTime ?? 0} Mins',
+                          style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.bold),
+                        ),
+                        const Spacer(),
+                        Text(
+                          recipe.difficulty ?? 'Med',
+                          style: const TextStyle(fontSize: 10, color: Color(0xFF53D22D), fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         );
       },
     );
+  }
+
+  void _showRecipeOptions(RecipeModel recipe) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 100), // Significant bottom padding
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 32),
+              const Text('Manage Recipe', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              _buildOptionItem(
+                icon: Icons.edit_outlined,
+                label: 'Edit Recipe',
+                color: const Color(0xFF53D22D),
+                onTap: () {
+                  context.pop();
+                  context.push('/edit_recipe', extra: recipe);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildOptionItem(
+                icon: Icons.delete_outline,
+                label: 'Delete Recipe',
+                color: Colors.redAccent,
+                onTap: () {
+                  context.pop();
+                  _confirmDelete(recipe);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOptionItem({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(border: Border.all(color: color.withOpacity(0.1)), borderRadius: BorderRadius.circular(16)),
+        child: Row(
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(width: 16),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+            const Spacer(),
+            Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey.withOpacity(0.3)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(RecipeModel recipe) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF152012),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Colors.redAccent, width: 0.5)),
+        title: const Text('Hapus Resep?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text('Apakah Anda yakin ingin menghapus "${recipe.title}"? Tindakan ini tidak dapat dibatalkan.', style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(onPressed: () => context.pop(), child: const Text('Batal', style: TextStyle(color: Colors.grey))),
+          ElevatedButton(
+            onPressed: () async {
+              context.pop();
+              await _performDelete(recipe);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _performDelete(RecipeModel recipe) async {
+    try {
+      final token = locator.authService.token ?? '';
+      await locator.recipeService.deleteRecipe(token, recipe.id!);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('"${recipe.title}" has been deleted'), backgroundColor: const Color(0xFF53D22D)));
+      _loadProfileData(); // Correct refresh method
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.redAccent));
+    }
   }
 }
 

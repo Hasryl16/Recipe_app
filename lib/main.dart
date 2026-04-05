@@ -8,6 +8,7 @@ import 'screens/search_screen.dart';
 import 'screens/meal_plan_screen.dart';
 import 'screens/add_recipe_screen.dart';
 import 'screens/recipe_detail_screen.dart';
+import 'screens/all_recipes_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/meal_selection_screen.dart';
 import 'screens/cooking_mode_screen.dart';
@@ -59,6 +60,17 @@ final GoRouter _router = GoRouter(
     GoRoute(
       path: '/add_recipe',
       builder: (context, state) => const AddRecipeScreen(),
+    ),
+    GoRoute(
+      path: '/edit_recipe',
+      builder: (context, state) {
+        final recipe = state.extra as RecipeModel;
+        return AddRecipeScreen(recipeToEdit: recipe);
+      },
+    ),
+    GoRoute(
+      path: '/all_recipes',
+      builder: (context, state) => const AllRecipesScreen(),
     ),
     GoRoute(
       path: '/recipe_detail',

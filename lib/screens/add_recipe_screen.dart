@@ -1,11 +1,12 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/recipe_model.dart';
 import '../service_locator.dart';
 import '../services/recipe_service.dart';
 
 class AddRecipeScreen extends StatefulWidget {
-  const AddRecipeScreen({super.key});
+  final RecipeModel? recipeToEdit;
+  const AddRecipeScreen({super.key, this.recipeToEdit});
 
   @override
   State<AddRecipeScreen> createState() => _AddRecipeScreenState();
@@ -17,22 +18,38 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
   bool _isSubmitting = false;
 
   // Controllers for Step 1
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  String _selectedCategory = 'Main Course';
+  late TextEditingController _titleController;
+  late TextEditingController _descriptionController;
+  late String _selectedCategory;
 
   // State for Step 2 (Ingredients)
-  final List<IngredientAmount> _ingredients = [
-    IngredientAmount(name: '', amount: '')
-  ];
+  late List<IngredientAmount> _ingredients;
 
   // State for Step 3 (Instructions)
-  final List<String> _instructions = [''];
+  late List<String> _instructions;
 
   // State for Step 4 (Settings)
-  String _difficulty = 'Medium';
-  String _cookingTime = '30';
-  String _servings = '2';
+  late String _difficulty;
+  late String _cookingTime;
+  late String _servings;
+
+  @override
+  void initState() {
+    super.initState();
+    final r = widget.recipeToEdit;
+    _titleController = TextEditingController(text: r?.title ?? '');
+    _descriptionController = TextEditingController(text: r?.description ?? '');
+    _selectedCategory = r?.category ?? 'Main Course';
+    _ingredients = r?.ingredients?.isNotEmpty == true 
+        ? List.from(r!.ingredients!) 
+        : [IngredientAmount(name: '', amount: '')];
+    _instructions = r?.steps?.isNotEmpty == true
+        ? List.from(r!.steps!)
+        : [''];
+    _difficulty = r?.difficulty ?? 'Medium';
+    _cookingTime = (r?.prepTime ?? 30).toString();
+    _servings = '2'; // Default
+  }
 
   void _nextStep() {
     if (_currentStep < _totalSteps) {
@@ -79,12 +96,16 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
     setState(() => _isSubmitting = true);
 
     try {
+      final token = locator.authService.token ?? '';
+      final currentUserId = locator.authService.currentUser?.id ?? 1;
+
       // Filter out empty ingredients/steps
       final finalIngredients = _ingredients.where((i) => i.name.isNotEmpty).toList();
       final finalSteps = _instructions.where((s) => s.isNotEmpty).toList();
 
       final recipe = RecipeModel(
-        authorId: 1, // Fallback for now
+        id: widget.recipeToEdit?.id,
+        authorId: currentUserId,
         title: _titleController.text,
         description: _descriptionController.text,
         category: _selectedCategory,
@@ -92,10 +113,14 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         difficulty: _difficulty,
         ingredients: finalIngredients,
         steps: finalSteps,
-        imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800', // Default placeholder
+        imageUrl: widget.recipeToEdit?.imageUrl ?? 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800',
       );
 
-      await locator.recipeService.createNewRecipe(recipe);
+      if (widget.recipeToEdit != null) {
+        await locator.recipeService.updateRecipe(token, recipe);
+      } else {
+        await locator.recipeService.createNewRecipe(token, recipe);
+      }
 
       if (!mounted) return;
       
@@ -106,22 +131,25 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         builder: (context) => AlertDialog(
           backgroundColor: const Color(0xFF152012),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30), side: const BorderSide(color: Color(0xFF53D22D), width: 1)),
-          title: const Column(
+          title: Column(
             children: [
-              Icon(Icons.check_circle_outline, color: Color(0xFF53D22D), size: 60),
-              SizedBox(height: 16),
-              Text('Recipe Posted!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24)),
+              const Icon(Icons.check_circle_outline, color: Color(0xFF53D22D), size: 60),
+              const SizedBox(height: 16),
+              Text(widget.recipeToEdit != null ? 'Recipe Updated!' : 'Recipe Posted!', 
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24)),
             ],
           ),
-          content: const Text('Your culinary creation is now live for others to enjoy.', 
+          content: Text(widget.recipeToEdit != null 
+            ? 'Your modifications have been successfully saved.'
+            : 'Your culinary creation is now live for others to enjoy.', 
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white70, fontSize: 16)),
+            style: const TextStyle(color: Colors.white70, fontSize: 16)),
           actionsAlignment: MainAxisAlignment.center,
           actions: [
             ElevatedButton(
               onPressed: () {
                 context.pop(); // Close dialog
-                context.pop(); // Go back to Home
+                context.pop(); // Go back
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF53D22D),
@@ -135,7 +163,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         ),
       );
     } catch (e) {
-      _showError('Failed to post recipe: ${e.toString()}');
+      _showError('Failed to process recipe: ${e.toString()}');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }

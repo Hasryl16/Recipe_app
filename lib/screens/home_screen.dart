@@ -206,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               TextButton(
-                onPressed: () {},
+                onPressed: () => context.push('/all_recipes'),
                 child: const Text('Lihat Semua', style: TextStyle(color: Color(0xFF53D22D))),
               ),
             ],

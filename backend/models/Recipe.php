@@ -92,6 +92,14 @@ class Recipe {
         return $this->attachDetails($recipes);
     }
 
+    public function getAll() {
+        $query = "SELECT * FROM " . $this->table_name . " ORDER BY created_at DESC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        $recipes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $this->attachDetails($recipes);
+    }
+
     public function search($keyword) {
         if (empty(trim($keyword))) return [];
         $searchTerm = "%{$keyword}%";
@@ -111,6 +119,104 @@ class Recipe {
         $stmt->execute([$userId]);
         $recipes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return $this->attachDetails($recipes);
+    }
+
+    public function update($id, $userId, $data) {
+        try {
+            $this->conn->beginTransaction();
+
+            // 1. Update basic info with ownership check
+            $query = "UPDATE " . $this->table_name . " 
+                      SET title = ?, description = ?, category = ?, prep_time = ?, difficulty = ?, kcal = ?, image_url = ? 
+                      WHERE id = ? AND author_id = ?";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([
+                $data['title'],
+                $data['description'] ?? '',
+                $data['category'] ?? '',
+                $data['prep_time'] ?? 0,
+                $data['difficulty'] ?? '',
+                $data['kcal'] ?? 0,
+                $data['image_url'] ?? '',
+                $id,
+                $userId
+            ]);
+
+            if ($stmt->rowCount() == 0) {
+                // If no row was updated, check if it's because item not found or not owned
+                $check = $this->getById($id);
+                if (!$check || $check['author_id'] != $userId) {
+                    throw new Exception("Recipe not found or you don't have permission");
+                }
+                // If owned but no values changed, rowCount is 0, which is technically fine in MySQL
+            }
+
+            // 2. Clear old ingredients and steps
+            $stmt = $this->conn->prepare("DELETE FROM recipe_ingredients WHERE recipe_id = ?");
+            $stmt->execute([$id]);
+            $stmt = $this->conn->prepare("DELETE FROM cooking_steps WHERE recipe_id = ?");
+            $stmt->execute([$id]);
+
+            // 3. Re-insert Ingredients (reuse creation logic pattern)
+            if (!empty($data['ingredients'])) {
+                foreach ($data['ingredients'] as $ing) {
+                    $stmt = $this->conn->prepare("SELECT id FROM ingredients WHERE name = ?");
+                    $stmt->execute([$ing['name']]);
+                    $ingredientId = $stmt->fetchColumn();
+                    if (!$ingredientId) {
+                        $stmt = $this->conn->prepare("INSERT INTO ingredients (name) VALUES (?)");
+                        $stmt->execute([$ing['name']]);
+                        $ingredientId = $this->conn->lastInsertId();
+                    }
+                    $stmt = $this->conn->prepare("INSERT INTO recipe_ingredients (recipe_id, ingredient_id, amount) VALUES (?, ?, ?)");
+                    $stmt->execute([$id, $ingredientId, $ing['amount'] ?? '']);
+                }
+            }
+
+            // 4. Re-insert Steps
+            if (!empty($data['steps'])) {
+                $stepNumber = 1;
+                foreach ($data['steps'] as $step) {
+                    $stmt = $this->conn->prepare("INSERT INTO cooking_steps (recipe_id, step_number, description) VALUES (?, ?, ?)");
+                    $stmt->execute([$id, $stepNumber++, $step]);
+                }
+            }
+
+            $this->conn->commit();
+            return ["status" => "success", "message" => "Recipe updated"];
+        } catch (Exception $e) {
+            if ($this->conn->inTransaction()) $this->conn->rollBack();
+            return ["status" => "error", "message" => $e->getMessage()];
+        }
+    }
+
+    public function delete($id, $userId) {
+        try {
+            $this->conn->beginTransaction();
+
+            // 1. Delete associated data first
+            $stmt = $this->conn->prepare("DELETE FROM recipe_ingredients WHERE recipe_id = ?");
+            $stmt->execute([$id]);
+            $stmt = $this->conn->prepare("DELETE FROM cooking_steps WHERE recipe_id = ?");
+            $stmt->execute([$id]);
+            $stmt = $this->conn->prepare("DELETE FROM bookmarks WHERE recipe_id = ?");
+            $stmt->execute([$id]);
+
+            // 2. Delete main recipe with ownership check
+            $query = "DELETE FROM " . $this->table_name . " WHERE id = ? AND author_id = ?";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([$id, $userId]);
+
+            if ($stmt->rowCount() == 0) {
+                throw new Exception("Recipe not found or you don't have permission");
+            }
+
+            $this->conn->commit();
+            return ["status" => "success", "message" => "Recipe deleted"];
+        } catch (Exception $e) {
+            if ($this->conn->inTransaction()) $this->conn->rollBack();
+            return ["status" => "error", "message" => $e->getMessage()];
+        }
     }
 
     public function create($data) {

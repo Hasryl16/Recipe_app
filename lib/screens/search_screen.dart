@@ -322,7 +322,7 @@ class _SearchScreenState extends State<SearchScreen> {
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
-              childAspectRatio: 0.8,
+              childAspectRatio: 0.7,
               children: _recipes.map((recipe) => _buildRecipeCard(recipe)).toList(),
             ),
         ],

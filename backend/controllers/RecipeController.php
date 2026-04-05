@@ -33,6 +33,18 @@ class RecipeController {
         return $this->recipe->getByAuthorId($id);
     }
 
+    public function getAll() {
+        return $this->recipe->getAll();
+    }
+
+    public function update($id, $userId, $data) {
+        return $this->recipe->update($id, $userId, $data);
+    }
+
+    public function delete($id, $userId) {
+        return $this->recipe->delete($id, $userId);
+    }
+
     public function search($keyword) {
         return $this->recipe->search($keyword);
     }

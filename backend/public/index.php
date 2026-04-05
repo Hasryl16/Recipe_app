@@ -62,6 +62,9 @@ switch ($endpoint) {
         $keyword = $_GET['q'] ?? '';
         echo json_encode($recipeController->search($keyword));
         break;
+    case 'recipes-all':
+        echo json_encode($recipeController->getAll());
+        break;
     case 'meal-plan':
         $userId = $_GET['user_id'] ?? 0;
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -77,8 +80,19 @@ switch ($endpoint) {
         break;
     case 'recipes':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $decoded = AuthMiddleware::authenticate();
+            $input['author_id'] = $decoded->uid;
             echo json_encode($recipeController->create($input));
+        } else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+            $decoded = AuthMiddleware::authenticate();
+            $id = $_GET['id'] ?? 0;
+            echo json_encode($recipeController->update($id, $decoded->uid, $input));
+        } else if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+            $decoded = AuthMiddleware::authenticate();
+            $id = $_GET['id'] ?? 0;
+            echo json_encode($recipeController->delete($id, $decoded->uid));
         } else {
+            // GET is public
             $authorId = $_GET['author_id'] ?? 0;
             echo json_encode($recipeController->getByAuthor($authorId));
         }

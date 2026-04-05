@@ -26,9 +26,31 @@ class RecipeService {
     return _repository.getRecipeById(id);
   }
 
-  Future<void> createNewRecipe(RecipeModel recipe) async {
+  Future<List<RecipeModel>> getAllRecipes() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/recipes-all'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return _mapToRecipes(data);
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<void> createNewRecipe(String token, RecipeModel recipe) async {
     if (recipe.title.isEmpty) throw Exception('Title is required');
-    await _repository.saveRecipe(recipe);
+    await _repository.saveRecipe(token, recipe);
+  }
+
+  Future<void> updateRecipe(String token, RecipeModel recipe) async {
+    if (recipe.title.isEmpty) throw Exception('Title is required');
+    await _repository.updateRecipe(token, recipe);
+  }
+
+  Future<void> deleteRecipe(String token, int recipeId) async {
+    await _repository.deleteRecipe(token, recipeId);
   }
 
   Future<List<RecipeModel>> getRecipesByAuthor(int authorId) {
@@ -42,6 +64,25 @@ class RecipeService {
 
   // --- Bookmarking (Saved Recipes) ---
   
+  // Helper method for robust mapping
+  List<RecipeModel> _mapToRecipes(dynamic data) {
+    if (data is! List) return [];
+    
+    final List<RecipeModel> recipes = [];
+    for (var item in data) {
+      try {
+        if (item is Map<String, dynamic>) {
+          // Normalize keys to lowercase for robustness
+          final normalized = item.map((k, v) => MapEntry(k.toLowerCase(), v));
+          recipes.add(RecipeModel.fromJson(normalized));
+        }
+      } catch (e) {
+        print('Error mapping individual recipe in service: $e');
+      }
+    }
+    return recipes;
+  }
+
   Future<List<RecipeModel>> getSavedRecipes(String token) async {
     try {
       final response = await http.get(
@@ -53,24 +94,7 @@ class RecipeService {
       );
       
       if (response.statusCode != 200) return [];
-
-      final dynamic decodedBody = jsonDecode(response.body);
-      if (decodedBody is! List) return [];
-
-      final List<RecipeModel> recipes = [];
-      for (var item in decodedBody) {
-        try {
-          if (item is Map<String, dynamic>) {
-            // Normalizing keys to lowercase for robustness
-            final normalized = item.map((k, v) => MapEntry(k.toLowerCase(), v));
-            recipes.add(RecipeModel.fromJson(normalized));
-          }
-        } catch (e) {
-          // Log or skip individual broken recipe
-          print('Error mapping individual recipe: $e');
-        }
-      }
-      return recipes;
+      return _mapToRecipes(jsonDecode(response.body));
     } catch (e) {
       print('Fatal error in getSavedRecipes: $e');
       return [];
