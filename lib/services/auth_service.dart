@@ -1,11 +1,12 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
 import '../repositories/user_repository.dart';
 
 class AuthService {
   final UserRepository _userRepository;
-  final String _baseUrl = 'http://localhost:8000'; // Match PHP server port
+  final String _baseUrl = kIsWeb ? 'http://localhost:8000' : 'http://10.0.2.2:8000';
   String? _token;
   UserModel? _currentUser;
 

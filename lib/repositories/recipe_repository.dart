@@ -6,7 +6,6 @@ abstract class RecipeRepository {
   Future<List<RecipeModel>> getTrendingRecipes();
   Future<List<RecipeModel>> getRecommendedRecipes();
   Future<RecipeModel> getRecipeById(int id);
-  Future<List<RecipeModel>> searchRecipesByIngredients(List<String> ingredients);
   Future<void> saveRecipe(String token, RecipeModel recipe);
   Future<void> updateRecipe(String token, RecipeModel recipe);
   Future<void> deleteRecipe(String token, int recipeId);
@@ -80,24 +79,6 @@ class RemoteRecipeRepository implements RecipeRepository {
       throw Exception('Recipe not found');
     } catch (e) {
       rethrow;
-    }
-  }
-
-  @override
-  Future<List<RecipeModel>> searchRecipesByIngredients(List<String> ingredients) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/fridge'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'ingredients': ingredients}),
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return _mapToRecipes(data);
-      }
-      return [];
-    } catch (e) {
-      return [];
     }
   }
 

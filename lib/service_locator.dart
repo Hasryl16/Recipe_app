@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'repositories/recipe_repository.dart';
 import 'repositories/user_repository.dart';
 import 'repositories/meal_plan_repository.dart';
@@ -15,7 +16,7 @@ class ServiceLocator {
   late final MealPlanService mealPlanService;
 
   void init() {
-    const baseUrl = 'http://localhost:8000'; // Real PHP backend API
+    final baseUrl = kIsWeb ? 'http://localhost:8000' : 'http://10.0.2.2:8000';
 
     final recipeRepo = RemoteRecipeRepository(baseUrl: baseUrl);
     final userRepo = RemoteUserRepository(baseUrl: baseUrl);

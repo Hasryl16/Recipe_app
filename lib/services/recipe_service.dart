@@ -1,11 +1,12 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/recipe_model.dart';
 import '../repositories/recipe_repository.dart';
 
 class RecipeService {
   final RecipeRepository _repository;
-  final String _baseUrl = 'http://localhost:8000'; // Match PHP server port
+  final String _baseUrl = kIsWeb ? 'http://localhost:8000' : 'http://10.0.2.2:8000';
 
   RecipeService(this._repository);
 
@@ -15,11 +16,6 @@ class RecipeService {
 
   Future<List<RecipeModel>> getRecommendedRecipes() {
     return _repository.getRecommendedRecipes();
-  }
-
-  Future<List<RecipeModel>> getFridgeRecipes(List<String> ingredients) {
-    if (ingredients.isEmpty) return getRecommendedRecipes();
-    return _repository.searchRecipesByIngredients(ingredients);
   }
 
   Future<RecipeModel> getRecipeById(int id) {

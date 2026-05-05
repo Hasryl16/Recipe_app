@@ -627,7 +627,7 @@ class _EditProfileBottomSheetState extends State<_EditProfileBottomSheet> {
     return Container(
       padding: EdgeInsets.only(
         left: 24, right: 24, top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 100, // Significant padding to clear the floating navbar
       ),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,

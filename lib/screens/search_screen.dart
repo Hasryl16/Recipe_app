@@ -12,7 +12,6 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
-  final Set<String> _selectedIngredients = {'Egg', 'Tomato', 'Avocado'};
   List<RecipeModel> _recipes = [];
   bool _isLoading = true;
   bool _isSearching = false;
@@ -68,35 +67,6 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  Future<void> _searchByIngredients() async {
-    setState(() {
-      _isLoading = true;
-      _isSearching = true;
-    });
-    try {
-      final results = await locator.recipeService.getFridgeRecipes(_selectedIngredients.toList());
-      setState(() {
-        _recipes = results;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  void _toggleIngredient(String ingredient) {
-    setState(() {
-      if (_selectedIngredients.contains(ingredient)) {
-        _selectedIngredients.remove(ingredient);
-      } else {
-        _selectedIngredients.add(ingredient);
-      }
-    });
-    _searchByIngredients();
-  }
-
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -108,7 +78,6 @@ class _SearchScreenState extends State<SearchScreen> {
             _buildHeader(),
             _buildSearchBar(context),
             _buildCategoriesSection(),
-            _buildFridgeSection(context),
             _buildRecommendedSection(context),
           ],
         ),
@@ -217,74 +186,6 @@ class _SearchScreenState extends State<SearchScreen> {
           const SizedBox(height: 8),
           Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
         ],
-      ),
-    );
-  }
-
-  Widget _buildFridgeSection(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFF53D22D).withOpacity(0.05),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF53D22D).withOpacity(0.1)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.kitchen, color: Color(0xFF53D22D)),
-                    SizedBox(width: 8),
-                    Text('What\'s in my Fridge?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                TextButton(
-                  onPressed: () {},
-                  child: const Text('Add Item +', style: TextStyle(color: Color(0xFF53D22D), fontSize: 12, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ..._selectedIngredients.map((item) => _buildIngredientChip(item, isDark)),
-                if (_selectedIngredients.isEmpty)
-                  const Text('Select ingredients to search', style: TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic)),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildIngredientChip(String label, bool isDark) {
-    return GestureDetector(
-      onTap: () => _toggleIngredient(label),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.grey[800] : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF53D22D).withOpacity(0.2)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-            const SizedBox(width: 4),
-            const Icon(Icons.close, size: 14, color: Colors.grey),
-          ],
-        ),
       ),
     );
   }

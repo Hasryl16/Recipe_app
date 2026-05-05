@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/register_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/meal_plan_screen.dart';
 import 'screens/add_recipe_screen.dart';
@@ -32,6 +33,10 @@ final GoRouter _router = GoRouter(
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: '/register',
+      builder: (context, state) => const RegisterScreen(),
     ),
     ShellRoute(
       navigatorKey: _shellNavigatorKey,
