@@ -222,6 +222,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Text('Username', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF53D22D))),
           ),
           TextField(
+            key: const Key('register_username_field'),
             controller: _usernameController,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
@@ -251,6 +252,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Text('Password', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF53D22D))),
           ),
           TextField(
+            key: const Key('register_password_field'),
             controller: _passwordController,
             obscureText: _obscureText,
             style: const TextStyle(color: Colors.white),
@@ -289,6 +291,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Text('Confirm Password', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF53D22D))),
           ),
           TextField(
+            key: const Key('register_confirm_password_field'),
             controller: _confirmPasswordController,
             obscureText: _obscureConfirmText,
             style: const TextStyle(color: Colors.white),
@@ -326,6 +329,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
+              key: const Key('register_button'),
               onPressed: _isLoading ? null : _register,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF53D22D),

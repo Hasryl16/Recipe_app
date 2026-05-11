@@ -188,6 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Text('Username', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF53D22D))),
           ),
           TextField(
+            key: const Key('login_username_field'),
             controller: _usernameController,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
@@ -231,6 +232,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           TextField(
+            key: const Key('login_password_field'),
             controller: _passwordController,
             obscureText: _obscureText,
             style: const TextStyle(color: Colors.white),
@@ -279,6 +281,7 @@ class _LoginScreenState extends State<LoginScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
+              key: const Key('login_button'),
               onPressed: _isLoading ? null : _login,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF53D22D),
